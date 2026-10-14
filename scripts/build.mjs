@@ -239,13 +239,20 @@ for (const stock of STOCKS) {
   });
 
   // zones
-  const toUp = (now.up / now.c - 1) * 100;
-  const aboveLo = (now.c / now.lo - 1) * 100;
-  const topIn = now.c >= now.up ? 'crossed' : now.c >= now.up * 0.95 ? 'within5' : now.c >= now.up * 0.9 ? 'within10' : null;
-  const botIn = now.c <= now.lo ? 'crossed' : now.c <= now.lo * 1.05 ? 'within5' : now.c <= now.lo * 1.1 ? 'within10' : null;
-  const pos = (now.c - now.lo) / (now.up - now.lo); // 0 = lower band, 1 = upper band
+  // zones use the month's High for the ceiling and Low for the floor (month to date for the current bar)
+  const toUp = (now.up / now.h - 1) * 100; // positive = High still below the ceiling
+  const aboveLo = (now.l / now.lo - 1) * 100; // positive = Low still above the floor
+  const closeToUp = (now.up / now.c - 1) * 100;
+  const closeAboveLo = (now.c / now.lo - 1) * 100;
+  const topIn = now.h >= now.up ? 'crossed' : now.h >= now.up * 0.95 ? 'within5' : now.h >= now.up * 0.9 ? 'within10' : null;
+  const botIn = now.l <= now.lo ? 'crossed' : now.l <= now.lo * 1.05 ? 'within5' : now.l <= now.lo * 1.1 ? 'within10' : null;
+  const pos = (now.c - now.lo) / (now.up - now.lo); // 0 = lower band, 1 = upper band, on the close
   const side = pos >= 0.5 ? 'TOP' : 'BOTTOM';
-  const zone = topIn ? { side: 'TOP', level: topIn } : botIn ? { side: 'BOTTOM', level: botIn } : { side: 'MID', level: 'mid' };
+  const rank = { crossed: 0, within5: 1, within10: 2 };
+  let zone = { side: 'MID', level: 'mid' };
+  if (topIn && botIn) zone = rank[topIn] < rank[botIn] || (rank[topIn] === rank[botIn] && side === 'TOP') ? { side: 'TOP', level: topIn } : { side: 'BOTTOM', level: botIn };
+  else if (topIn) zone = { side: 'TOP', level: topIn };
+  else if (botIn) zone = { side: 'BOTTOM', level: botIn };
 
   const bw = mo.filter((b) => b.up !== null).map((b) => (b.up - b.lo) / b.sma20);
   const bwNow = bw[bw.length - 1];
@@ -264,8 +271,8 @@ for (const stock of STOCKS) {
   const last4 = fund.quarters.slice(-4);
   const epsGrowth = prior4.length === 4 ? (mean(last4.map((q) => q.neps)) / mean(prior4.map((q) => q.neps)) - 1) * 100 : null;
 
-  const placeWord = zone.side === 'TOP' ? (zone.level === 'crossed' ? 'Above the upper band' : 'Near the upper band')
-    : zone.side === 'BOTTOM' ? (zone.level === 'crossed' ? 'Below the lower band' : 'Near the lower band')
+  const placeWord = zone.side === 'TOP' ? (zone.level === 'crossed' ? 'High has touched the upper band' : 'High is near the upper band')
+    : zone.side === 'BOTTOM' ? (zone.level === 'crossed' ? 'Low has touched the lower band' : 'Low is near the lower band')
     : (side === 'TOP' ? 'Mid-band, nearer the upper band' : 'Mid-band, nearer the lower band');
   let val = 'no earlier touch has earnings data to compare';
   let valKey = 'none';
@@ -288,7 +295,9 @@ for (const stock of STOCKS) {
     sym: stock.sym, name: stock.name, group: stock.group, kind: stock.kind,
     cmp: now.c, asOf: '2026-10-14', partialMonth: now.partial,
     band: { up: r2(now.up), lo: r2(now.lo), mid: r2(now.sma20), s9: r2(now.sma9) },
-    toUpperPct: r1(toUp), aboveLowerPct: r1(aboveLo), pos: r2(pos),
+    toUpperPct: r1(toUp), aboveLowerPct: r1(aboveLo), closeToUpperPct: r1(closeToUp), closeAboveLowerPct: r1(closeAboveLo),
+    mHigh: now.h, mLow: now.l, pos: r2(pos),
+    bothEdges: !!(topIn && botIn),
     zone, vsS9Pct: r1((now.c / now.sma9 - 1) * 100),
     s9Slope3m: r1((now.sma9 / mo[mo.length - 4].sma9 - 1) * 100),
     bandwidthPct: r1(bwNow * 100), bandwidthRank: bwPct,

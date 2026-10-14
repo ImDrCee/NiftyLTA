@@ -83,6 +83,8 @@ button { font: inherit; color: inherit; }
 .z.b5 { left: 0; background: rgba(23, 99, 107, .22); }
 .z.t10 { right: 0; background: rgba(176, 53, 25, .13); }
 .z.t5 { right: 0; background: rgba(176, 53, 25, .22); }
+.track .rng { position: absolute; top: 5px; bottom: 5px; border-radius: 2px; background: rgba(21, 19, 15, .28); }
+.range { margin-top: 4px; font-size: .74rem; color: var(--ink-soft); }
 .track::before, .track::after { content: ""; position: absolute; top: -2px; bottom: -2px; width: 2px; }
 .track::before { left: 0; background: var(--bot); }
 .track::after { right: 0; background: var(--top); }

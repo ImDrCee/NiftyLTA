@@ -15,12 +15,13 @@
 
   const cls = (z) => (z.side === 'TOP' ? 'top' : z.side === 'BOTTOM' ? 'bot' : 'mid');
   const zoneText = (z) => z.side === 'MID' ? 'Between the zones'
-    : z.level === 'crossed' ? (z.side === 'TOP' ? 'Above the ceiling' : 'Below the floor')
-    : `Within ${z.level === 'within5' ? 5 : 10}% of the ${z.side === 'TOP' ? 'ceiling' : 'floor'}`;
+    : z.level === 'crossed' ? (z.side === 'TOP' ? 'High touched the ceiling' : 'Low touched the floor')
+    : `${z.side === 'TOP' ? 'High' : 'Low'} within ${z.level === 'within5' ? 5 : 10}% of the ${z.side === 'TOP' ? 'ceiling' : 'floor'}`;
+  // distances use the month's High against the ceiling and Low against the floor
   const nearest = (s) => (Math.abs(s.toUpperPct) < Math.abs(s.aboveLowerPct)
-    ? { side: 'ceiling', v: Math.abs(s.toUpperPct), word: s.toUpperPct >= 0 ? 'below the ceiling' : 'above the ceiling' }
-    : { side: 'floor', v: Math.abs(s.aboveLowerPct), word: s.aboveLowerPct >= 0 ? 'above the floor' : 'below the floor' });
-  const closeness = (s) => nearest(s).v;
+    ? { side: 'ceiling', v: Math.abs(s.toUpperPct), word: s.toUpperPct >= 0 ? 'High below the ceiling' : 'High above the ceiling' }
+    : { side: 'floor', v: Math.abs(s.aboveLowerPct), word: s.aboveLowerPct >= 0 ? 'Low above the floor' : 'Low below the floor' });
+  const closeness = (s) => (s.zone.level === 'crossed' ? -1 : 0) + nearest(s).v / 1000;
   const byClose = S.slice().sort((a, b) => closeness(a) - closeness(b));
   const byPos = S.slice().sort((a, b) => a.pos - b.pos);
   const label = (s) => (s.kind === 'nonfin' ? 'Sales' : 'Net interest income');
@@ -31,8 +32,10 @@
   const zoneShapes = (s) => {
     const w = s.band.up - s.band.lo;
     const f = (p, side) => (side === 'b' ? (p * s.band.lo) / w : (p * s.band.up) / w) * 100;
+    const rl = clamp((s.mLow - s.band.lo) / w, 0, 1) * 100, rh = clamp((s.mHigh - s.band.lo) / w, 0, 1) * 100;
     return `<i class="z b10" style="width:${f(0.10, 'b')}%"></i><i class="z b5" style="width:${f(0.05, 'b')}%"></i>`
-      + `<i class="z t10" style="width:${f(0.10, 't')}%"></i><i class="z t5" style="width:${f(0.05, 't')}%"></i>`;
+      + `<i class="z t10" style="width:${f(0.10, 't')}%"></i><i class="z t5" style="width:${f(0.05, 't')}%"></i>`
+      + `<i class="rng" style="left:${rl}%;width:${Math.max(0.8, rh - rl)}%"></i>`;
   };
 
   /* ---------- hero rails ---------- */
@@ -79,6 +82,7 @@
 
   /* ---------- board ---------- */
   const groups = [
+    { key: 'crossed', title: 'Touched an edge this month' },
     { key: 'within5', title: 'Within 5% of an edge' },
     { key: 'within10', title: 'Within 10% of an edge' },
     { key: 'mid', title: 'Between the zones' },
@@ -94,6 +98,7 @@
         <div class="name">${s.name}</div>
         <div class="track" aria-hidden="true">${zoneShapes(s)}<i class="dot ${s.zone.side === 'MID' ? '' : cls(s.zone)}" style="left:${clamp(s.pos, -0.03, 1.03) * 100}%"></i></div>
         <div class="band-ends"><span>floor ${inr(s.band.lo)}</span><span>ceiling ${inr(s.band.up)}</span></div>
+        <div class="range">Month low <b>${inr(s.mLow)}</b>, high <b>${inr(s.mHigh)}</b></div>
         <div class="tag">${esc(v.tag)}.</div>
         <div class="meta">${rel}<span>9M avg <b>${pct(s.vsS9Pct)}</b></span></div>
         <div class="conf">${v.confidence === 'low' ? 'Low confidence: ' + (v.relPct === null ? 'no earnings history at an earlier touch' : 'earnings run-rate from fewer than four quarters') : 'Medium confidence'}</div>
@@ -144,10 +149,11 @@
 
   /* ---------- close ---------- */
   (() => {
-    const fl = byClose.filter((s) => s.zone.side === 'BOTTOM').map((s) => `${s.sym} (${s.aboveLowerPct.toFixed(1)}% above)`);
-    const ce = byClose.filter((s) => s.zone.side === 'TOP').map((s) => `${s.sym} (${Math.abs(s.toUpperPct).toFixed(1)}% below)`);
+    const d = (v) => (v <= 0 ? 'touched' : `${v.toFixed(1)}% away`);
+    const fl = byClose.filter((s) => s.zone.side === 'BOTTOM').map((s) => `${s.sym} (low ${d(s.aboveLowerPct)})`);
+    const ce = byClose.filter((s) => s.zone.side === 'TOP').map((s) => `${s.sym} (high ${d(s.toUpperPct)})`);
     const mid = S.filter((s) => s.zone.side === 'MID').length;
-    $('#close-line').textContent = `Within 10% of the floor: ${fl.join(', ') || 'none'}. Within 10% of the ceiling: ${ce.join(', ') || 'none'}. The other ${mid} sit between the zones.`;
+    $('#close-line').textContent = `Month low within 10% of the floor, or through it: ${fl.join(', ') || 'none'}. Month high within 10% of the ceiling, or through it: ${ce.join(', ') || 'none'}. The other ${mid} sit between the zones.`;
   })();
 
   /* ---------- time machine ---------- */
@@ -193,12 +199,13 @@
   }
 
   function monthZone(m) {
-    if (m.h >= m.up) return { c: 'top', t: 'Touched the ceiling' };
-    if (m.l <= m.lo) return { c: 'bot', t: 'Touched the floor' };
-    if (m.c >= m.up * 0.95) return { c: 'top', t: 'Within 5% of the ceiling' };
-    if (m.c >= m.up * 0.90) return { c: 'top', t: 'Within 10% of the ceiling' };
-    if (m.c <= m.lo * 1.05) return { c: 'bot', t: 'Within 5% of the floor' };
-    if (m.c <= m.lo * 1.10) return { c: 'bot', t: 'Within 10% of the floor' };
+    const rank = { x: 0, a: 1, b: 2 };
+    const t = m.h >= m.up ? 'x' : m.h >= m.up * 0.95 ? 'a' : m.h >= m.up * 0.90 ? 'b' : null;
+    const b = m.l <= m.lo ? 'x' : m.l <= m.lo * 1.05 ? 'a' : m.l <= m.lo * 1.10 ? 'b' : null;
+    const topWins = t && (!b || rank[t] < rank[b] || (rank[t] === rank[b] && m.c - m.lo >= m.up - m.c));
+    const txt = { x: 'touched', a: 'within 5% of', b: 'within 10% of' };
+    if (topWins) return { c: 'top', t: `High ${txt[t]} the ceiling` };
+    if (b) return { c: 'bot', t: `Low ${txt[b]} the floor` };
     return { c: 'mid', t: 'Between the zones' };
   }
 

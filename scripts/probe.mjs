@@ -1,0 +1,18 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
+await p.goto('http://localhost:4500/'); await p.waitForTimeout(500);
+const ro = () => p.evaluate(() => ({ month: document.querySelector('.ro-month')?.textContent, checked: document.querySelector('.chip[aria-checked=true]')?.textContent, sy: Math.round(scrollY), machineTop: Math.round(document.querySelector('#machine').getBoundingClientRect().top) }));
+await p.evaluate(() => document.querySelector('#board').scrollIntoView()); await p.waitForTimeout(1200);
+await p.click('.card[data-sym="LT"]'); await p.waitForTimeout(1800);
+console.log('after card click', JSON.stringify(await ro()));
+await p.click('.chip[data-sym="TCS"]'); await p.waitForTimeout(600);
+console.log('after chip TCS', JSON.stringify(await ro()));
+await p.fill('#scrub', '700'); await p.dispatchEvent('#scrub', 'input'); await p.waitForTimeout(1200);
+console.log('after slider 700', JSON.stringify(await ro()), 'val', await p.inputValue('#scrub'));
+const rd = await p.evaluate(() => document.querySelector('.ro-month').textContent);
+await p.keyboard.press('Tab');
+console.log('focus', await p.evaluate(() => document.activeElement.tagName + '.' + document.activeElement.className));
+console.log('errors', JSON.stringify(errs));
+await b.close();

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NiftyLTA | Eleven large caps against their monthly Bollinger bands</title>
+<meta name="description" content="Where eleven NIFTY large caps sit inside their monthly Bollinger bands, and whether earnings justify the price compared with the last time they touched an edge.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%2315130F%27/%3E%3Cpath d=%27M5 9h22M5 23h22%27 stroke=%27%23B03519%27 stroke-width=%273%27/%3E%3Cpath d=%27M5 23h22%27 stroke=%27%2317636B%27 stroke-width=%273%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%273.5%27 fill=%27%23F3EFE6%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#board">Skip to the board</a>
+
+<header class="bar" role="banner">
+  <a class="mark" href="#top">NiftyLTA</a>
+  <nav aria-label="Chapters">
+    <a href="#method">Method</a>
+    <a href="#board">Board</a>
+    <a href="#machine">Time machine</a>
+    <a href="#ledger">Ledger</a>
+    <a href="#aftermath">Aftermath</a>
+  </nav>
+  <span class="asof" id="asof"></span>
+</header>
+
+<main id="top">
+
+<section class="act hero" id="hero" aria-labelledby="h-hero">
+  <div class="pin">
+    <div class="hero-copy">
+      <p class="kicker">Long term analysis, monthly chart</p>
+      <h1 id="h-hero">Eleven large caps. One yardstick.</h1>
+      <p class="lead">Each line below is a stock's monthly Bollinger band, floor on the left and ceiling on the right. The dot is where the price sits today. The shaded ends mark within 5% and within 10% of an edge.</p>
+    </div>
+    <ol class="rails" id="rails" aria-label="Position of each stock inside its monthly band"></ol>
+    <p class="legend"><span><i class="sw sw-bot"></i>floor side</span><span><i class="sw sw-top"></i>ceiling side</span><span><i class="sw sw-mid"></i>between the zones</span></p>
+  </div>
+</section>
+
+<section class="act method" id="method" aria-labelledby="h-method">
+  <div class="method-grid">
+    <figure class="schematic" aria-hidden="true">
+      <svg viewBox="0 0 520 300" id="schem"></svg>
+    </figure>
+    <div class="method-copy">
+      <h2 id="h-method">How a stock is read</h2>
+      <ol class="statements">
+        <li class="wipe"><h3>The yardstick</h3><p>Monthly candles, Bollinger bands over 20 months at 2 standard deviations. Upper and lower band are the ceiling and the floor.</p></li>
+        <li class="wipe"><h3>The trendline</h3><p>A 9 month average of the close. It tells you which way the stock has been leaning and how far the price has stretched from it.</p></li>
+        <li class="wipe"><h3>A touch</h3><p>Any month whose high reaches the ceiling or whose low reaches the floor. Months that touch close together are one episode.</p></li>
+        <li class="wipe"><h3>Is the price justified</h3><p>For each past episode, take the earnings known at that time and compare them with the latest quarter. Banks and lenders use net interest income and profit instead of sales. One-off other income is replaced by the stock's own typical level.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="act board" id="board" aria-labelledby="h-board">
+  <header class="act-head center">
+    <h2 id="h-board">The board</h2>
+    <p>Sorted by how close each price is to an edge. Pick any card to take it back in time.</p>
+  </header>
+  <div id="board-groups"></div>
+</section>
+
+<section class="act machine" id="machine" aria-labelledby="h-machine">
+  <div class="pin night">
+    <div class="machine-top">
+      <h2 id="h-machine">Time machine</h2>
+      <div class="chips" id="chips" role="radiogroup" aria-label="Stock"></div>
+    </div>
+    <div class="machine-body">
+      <div class="chart-wrap" id="chart-wrap">
+        <div class="chart-layers" id="chart-layers"></div>
+        <div class="cursor" id="cursor" aria-hidden="true"><span id="cursor-label"></span></div>
+      </div>
+      <div class="readout" id="readout" aria-live="polite"></div>
+    </div>
+    <label class="scrub">
+      <span class="sr">Month</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Travel back through the months">
+      <span class="scrub-ends"><span id="scrub-now"></span><span id="scrub-then"></span></span>
+    </label>
+  </div>
+</section>
+
+<section class="act ledger" id="ledger" aria-labelledby="h-ledger">
+  <div class="pin">
+    <header class="act-head left">
+      <h2 id="h-ledger">The ledger</h2>
+      <p>Every past touch for each stock, with the price and core earnings then against now.</p>
+    </header>
+    <div class="rail-track" id="ledger-track" tabindex="0" aria-label="Ledger sheets, one per stock"></div>
+  </div>
+</section>
+
+<section class="act aftermath" id="aftermath" aria-labelledby="h-after">
+  <header class="act-head right">
+    <h2 id="h-after">What the price did next</h2>
+    <p>Return six months after the first month of each episode, measured from that month's close. Small samples, so read the spread, not the average.</p>
+  </header>
+  <div class="pooled" id="pooled"></div>
+  <ul class="dots" id="dots" aria-label="Six month return after each touch"></ul>
+  <p class="axis-note"><span>falls</span><span>0</span><span>rises</span></p>
+</section>
+
+<section class="act close" id="close" aria-labelledby="h-close">
+  <div class="close-grid">
+    <div>
+      <h2 id="h-close">Where it stands</h2>
+      <p class="close-line" id="close-line"></p>
+    </div>
+    <div class="limits">
+      <h3>What this cannot tell you</h3>
+      <ul>
+        <li>Screener gives 13 quarters, so earnings context exists only for touches from about August 2023 onward. Older touches show no earnings.</li>
+        <li>October 2026 is a partial month. Its candle will change until the month ends.</li>
+        <li>Core earnings are an estimate: other income is replaced by the stock's own median and tax is set at 25%. Banks use pre-tax profit as reported.</li>
+        <li>Each stock has one to four episodes per side. That is a pattern, not a statistic.</li>
+        <li>Prices come from Zerodha Kite daily candles and are split and bonus adjusted. Fundamentals come from Screener consolidated results.</li>
+      </ul>
+      <p class="fine">Research notes for personal use. Not investment advice.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

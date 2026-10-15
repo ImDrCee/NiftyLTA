@@ -7,6 +7,7 @@
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const ml = (m) => { const [y, mo] = m.split('-'); return MON[+mo - 1] + ' ' + y; };
   const inr = (n) => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: n >= 100 ? 0 : 2 });
+  const pr = (s, n) => (s.kind === 'index' ? Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : inr(n)); // index levels are points, not rupees
   const num = (n, d = 1) => (n === null || n === undefined ? 'n/a' : Number(n).toFixed(d));
   const pct = (n) => (n === null || n === undefined ? 'n/a' : (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toFixed(1) + '%');
   const cr = (n) => Number(n).toLocaleString('en-IN') + ' cr';
@@ -93,15 +94,18 @@
     return `<div class="group"><h3>${g.title}</h3><div class="cards">${list.map((s) => {
       const v = s.verdict;
       const rel = v.relPct === null ? '' : `<span>P/E <b>${num(s.now.pe)}</b> now vs <b>${num(v.peThen)}</b> at past ${v.refSide === 'TOP' ? 'ceilings' : 'floors'}</span>`;
+      const conf = v.confidence === 'price-only' ? 'Price only: an index has no earnings'
+        : v.confidence === 'low' ? 'Low confidence: ' + (v.relPct === null ? 'no earnings history at an earlier touch' : 'earnings run-rate from fewer than four quarters')
+        : 'Medium confidence';
       return `<button class="card" data-sym="${s.sym}" aria-label="${s.name}, open in the time machine">
-        <div class="card-top"><strong>${s.sym}</strong><span>${inr(s.cmp)}</span></div>
+        <div class="card-top"><strong>${s.sym}</strong><span>${pr(s, s.cmp)}</span></div>
         <div class="name">${s.name}</div>
         <div class="track" aria-hidden="true">${zoneShapes(s)}<i class="dot ${s.zone.side === 'MID' ? '' : cls(s.zone)}" style="left:${clamp(s.pos, -0.03, 1.03) * 100}%"></i></div>
-        <div class="band-ends"><span>floor ${inr(s.band.lo)}</span><span>ceiling ${inr(s.band.up)}</span></div>
-        <div class="range">Month low <b>${inr(s.mLow)}</b>, high <b>${inr(s.mHigh)}</b></div>
+        <div class="band-ends"><span>floor ${pr(s, s.band.lo)}</span><span>ceiling ${pr(s, s.band.up)}</span></div>
+        <div class="range">Month low <b>${pr(s, s.mLow)}</b>, high <b>${pr(s, s.mHigh)}</b></div>
         <div class="tag">${esc(v.tag)}.</div>
         <div class="meta">${rel}<span>9M avg <b>${pct(s.vsS9Pct)}</b></span></div>
-        <div class="conf">${v.confidence === 'low' ? 'Low confidence: ' + (v.relPct === null ? 'no earnings history at an earlier touch' : 'earnings run-rate from fewer than four quarters') : 'Medium confidence'}</div>
+        <div class="conf">${conf}</div>
       </button>`;
     }).join('')}</div></div>`;
   }).join('');
@@ -109,13 +113,14 @@
   /* ---------- ledger ---------- */
   const epRow = (s, e) => {
     const f = e.fund; const side = e.side === 'TOP' ? 'Ceiling' : 'Floor';
+    const idx = s.kind === 'index';
     const when = e.start === e.end ? ml(e.start) : `${ml(e.start)} to ${ml(e.end)}`;
     const dc = (v) => (v === null ? '' : v >= 0 ? 'pos' : 'neg');
     const fw = [e.fwd3, e.fwd6, e.fwd12].map((v) => (v === null ? 'n/a' : pct(v))).join(' / ');
     return `<div class="ep"><div class="ep-h"><b class="${e.side === 'TOP' ? 'top' : 'bot'}">${side}${e.ongoing ? ', ongoing' : ''}</b><span>${when}</span></div>
       <dl>
-        <dt>Peak month</dt><dd>${ml(e.peak)} at ${inr(e.pricePeak)}, ${e.closed} of ${e.months} closed beyond</dd>
-        ${f && e.ongoing && f.priceNowPct === 0 ? `<dt>Then to now</dt><dd>this is the current month</dd><dt>P/E now</dt><dd>${num(f.peNow)}</dd>` : f ? `<dt>Price then to now</dt><dd class="${dc(f.priceNowPct)}">${pct(f.priceNowPct)}</dd>
+        <dt>Peak month</dt><dd>${ml(e.peak)} at ${pr(s, e.pricePeak)}, ${e.closed} of ${e.months} closed beyond</dd>
+        ${idx ? (e.ongoing ? '' : `<dt>Level then to now</dt><dd class="${dc((s.cmp / e.pricePeak - 1) * 100)}">${pct((s.cmp / e.pricePeak - 1) * 100)}</dd>`) : f && e.ongoing && f.priceNowPct === 0 ? `<dt>Then to now</dt><dd>this is the current month</dd><dt>P/E now</dt><dd>${num(f.peNow)}</dd>` : f ? `<dt>Price then to now</dt><dd class="${dc(f.priceNowPct)}">${pct(f.priceNowPct)}</dd>
         <dt>P/E then to now</dt><dd>${num(f.pe)} to ${num(f.peNow)}${f.full ? '' : ' (under 4 quarters)'}</dd>
         <dt>Core EPS then to now</dt><dd>${pct(f.epsNowPct)}</dd>
         <dt>${label(s)}</dt><dd>${pct(f.revNowPct)}</dd>` : `<dt>Earnings</dt><dd>Before the data starts</dd>`}
@@ -126,8 +131,8 @@
     const tops = s.episodes.filter((e) => e.side === 'TOP').slice(-2);
     const bots = s.episodes.filter((e) => e.side === 'BOTTOM').slice(-2);
     const all = [...tops, ...bots].sort((a, b) => (a.start < b.start ? 1 : -1));
-    return `<article class="sheet"><div class="sheet-head"><strong>${s.sym}</strong><span>${inr(s.cmp)}</span></div>
-      <p class="sheet-sub">${esc(zoneText(s.zone))}. P/E now ${num(s.now.pe)} on results to ${s.now.q}.</p>
+    return `<article class="sheet"><div class="sheet-head"><strong>${s.sym}</strong><span>${pr(s, s.cmp)}</span></div>
+      <p class="sheet-sub">${esc(zoneText(s.zone))}. ${s.kind === 'index' ? 'An index, so no earnings to compare.' : `P/E now ${num(s.now.pe)} on results to ${s.now.q}.`}</p>
       ${all.length ? all.map((e) => epRow(s, e)).join('') : '<p class="empty">No touches in the data window.</p>'}</article>`;
   }).join('');
 
@@ -135,7 +140,7 @@
   (() => {
     const pool = (side) => {
       const rows = ['fwd3', 'fwd6', 'fwd12'].map((k, i) => {
-        const v = S.flatMap((s) => s.episodes.filter((e) => e.side === side && e[k] !== null).map((e) => e[k]));
+        const v = S.filter((s) => s.kind !== 'index').flatMap((s) => s.episodes.filter((e) => e.side === side && e[k] !== null).map((e) => e[k]));
         return `<div class="pool-row"><span>After ${[3, 6, 12][i]} months</span><span>${pct(median(v))} median, ${v.length} episodes</span></div>`;
       }).join('');
       return `<div class="pool ${side === 'TOP' ? 'top' : 'bot'}"><h3>After touching the ${side === 'TOP' ? 'ceiling' : 'floor'}</h3>${rows}</div>`;
@@ -214,15 +219,22 @@
     const posIn = ((m.c - m.lo) / (m.up - m.lo)) * 100;
     const dPE = f && f.pe && st.now.pe ? (st.now.pe / f.pe - 1) * 100 : null;
     const revWord = label(st);
+    const idx = st.kind === 'index';
+    const cells = idx
+      ? `<div><dt>Month high and low</dt><dd>${pr(st, m.h)} <small>low ${pr(st, m.l)}</small></dd></div>
+        <div><dt>9 month average</dt><dd>${pr(st, m.s9)} <small>close ${pct((m.c / m.s9 - 1) * 100)} from it</small></dd></div>`
+      : `<div><dt>P/E on core earnings</dt><dd>${f ? num(f.pe) : 'n/a'} <small>now ${num(st.now.pe)}${dPE === null ? '' : ', ' + pct(dPE)}</small></dd></div>
+        <div><dt>${revWord} run-rate</dt><dd>${f ? cr(f.rev) : 'n/a'} <small>${f ? 'now ' + pct((st.now.rrRev / f.rev - 1) * 100) : ''}</small></dd></div>`;
+    const note = idx ? 'An index has no earnings, so this view shows price against the band only.'
+      : f ? `Earnings known by the end of this month: results to ${f.q}${f.full ? '' : ', run-rate from fewer than four quarters'}.` : 'No quarterly results in the dataset yet for this month. Screener history starts at June 2023.';
     readout.innerHTML = `<div class="ro-month">${ml(m.m)}${m.partial ? ' <small style="font-size:.4em;letter-spacing:.04em">so far</small>' : ''}</div>
       <span class="ro-badge ${z.c}">${z.t}</span>
       <dl class="ro-grid">
-        <div><dt>Close</dt><dd>${inr(m.c)} <small>now ${pct((st.cmp / m.c - 1) * 100)}</small></dd></div>
+        <div><dt>Close</dt><dd>${pr(st, m.c)} <small>now ${pct((st.cmp / m.c - 1) * 100)}</small></dd></div>
         <div><dt>Position in band</dt><dd>${Math.round(posIn)} <small>0 is the floor, 100 the ceiling</small></dd></div>
-        <div><dt>P/E on core earnings</dt><dd>${f ? num(f.pe) : 'n/a'} <small>now ${num(st.now.pe)}${dPE === null ? '' : ', ' + pct(dPE)}</small></dd></div>
-        <div><dt>${revWord} run-rate</dt><dd>${f ? cr(f.rev) : 'n/a'} <small>${f ? 'now ' + pct((st.now.rrRev / f.rev - 1) * 100) : ''}</small></dd></div>
+        ${cells}
       </dl>
-      <p class="ro-note">${f ? `Earnings known by the end of this month: results to ${f.q}${f.full ? '' : ', run-rate from fewer than four quarters'}.` : 'No quarterly results in the dataset yet for this month. Screener history starts at June 2023.'}</p>`;
+      <p class="ro-note">${note}</p>`;
   }
 
   function placeCursor(t) {

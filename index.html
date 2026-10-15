@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NiftyLTA | Eleven large caps against their monthly Bollinger bands</title>
-<meta name="description" content="Where eleven NIFTY large caps sit inside their monthly Bollinger bands, and whether earnings justify the price compared with the last time they touched an edge.">
+<title>NiftyLTA | Eleven large caps and two indices against their monthly Bollinger bands</title>
+<meta name="description" content="Where eleven NIFTY large caps, NIFTY 50 and BANK NIFTY sit inside their monthly Bollinger bands, and whether earnings justify the price compared with the last time they touched an edge.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%2315130F%27/%3E%3Cpath d=%27M5 9h22M5 23h22%27 stroke=%27%23B03519%27 stroke-width=%273%27/%3E%3Cpath d=%27M5 23h22%27 stroke=%27%2317636B%27 stroke-width=%273%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%273.5%27 fill=%27%23F3EFE6%27/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -29,8 +29,8 @@
   <div class="pin">
     <div class="hero-copy">
       <p class="kicker">Long term analysis, monthly chart</p>
-      <h1 id="h-hero">Eleven large caps. One yardstick.</h1>
-      <p class="lead">Each line is a stock's monthly Bollinger band, floor on the left and ceiling on the right. The dot is today's close and the grey bar is this month's low to high. Zones use the high for the ceiling and the low for the floor.</p>
+      <h1 id="h-hero">Eleven large caps and two indices. One yardstick.</h1>
+      <p class="lead">Each line is a monthly Bollinger band, floor on the left and ceiling on the right. The dot is today's close and the grey bar is this month's low to high. Zones use the high for the ceiling and the low for the floor.</p>
     </div>
     <ol class="rails" id="rails" aria-label="Position of each stock inside its monthly band"></ol>
     <p class="legend"><span><i class="sw sw-bot"></i>floor side</span><span><i class="sw sw-top"></i>ceiling side</span><span><i class="sw sw-mid"></i>between the zones</span></p>
@@ -48,7 +48,7 @@
         <li class="wipe"><h3>The yardstick</h3><p>Monthly candles, Bollinger bands over 20 months at 2 standard deviations. Upper and lower band are the ceiling and the floor.</p></li>
         <li class="wipe"><h3>The trendline</h3><p>A 9 month average of the close. It tells you which way the stock has been leaning and how far the price has stretched from it.</p></li>
         <li class="wipe"><h3>A touch</h3><p>Any month whose high reaches the ceiling or whose low reaches the floor. Months that touch close together are one episode.</p></li>
-        <li class="wipe"><h3>Is the price justified</h3><p>For each past episode, take the earnings known at that time and compare them with the latest quarter. Banks and lenders use net interest income and profit instead of sales. One-off other income is replaced by the stock's own typical level.</p></li>
+        <li class="wipe"><h3>Is the price justified</h3><p>For each past episode, take the earnings known at that time and compare them with the latest quarter. Banks and lenders use net interest income and profit instead of sales. One-off other income is replaced by the stock's own typical level. NIFTY 50 and BANK NIFTY have no earnings, so they are read on price alone.</p></li>
       </ol>
     </div>
   </div>
@@ -116,6 +116,7 @@
         <li>October 2026 is a partial month. Its candle will change until the month ends.</li>
         <li>Core earnings are an estimate: other income is replaced by the stock's own median and tax is set at 25%. Banks use pre-tax profit as reported.</li>
         <li>Each stock has one to four episodes per side. That is a pattern, not a statistic.</li>
+        <li>The pooled medians cover the eleven stocks only. The two indices appear in the dot plot but are not pooled, because their moves overlap with the stocks inside them. Index levels are in points, from Kite daily candles.</li>
         <li>Prices come from Zerodha Kite daily candles and are split and bonus adjusted. Fundamentals come from Screener consolidated results.</li>
       </ul>
       <p class="fine">Research notes for personal use. Not investment advice.</p>

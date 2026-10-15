@@ -20,6 +20,8 @@ const STOCKS = [
   { sym: 'LT', name: 'Larsen and Toubro', group: 'Energy and conglomerates', kind: 'nonfin' },
   { sym: 'HINDUNILVR', name: 'Hindustan Unilever', group: 'Consumer and pharma', kind: 'nonfin' },
   { sym: 'SUNPHARMA', name: 'Sun Pharma', group: 'Consumer and pharma', kind: 'nonfin' },
+  { sym: 'NIFTY', name: 'NIFTY 50 index', group: 'Indices', kind: 'index' },
+  { sym: 'BANKNIFTY', name: 'NIFTY Bank index', group: 'Indices', kind: 'index' },
 ];
 
 const MON = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
@@ -202,14 +204,16 @@ const result = { generated: new Date().toISOString().slice(0, 10), stocks: [] };
 for (const stock of STOCKS) {
   const mo = loadMonthly(stock.sym);
   const drift = crossCheck(stock.sym, mo);
-  const fund = normaliseQuarters(stock);
+  const isIndex = stock.kind === 'index'; // indices have no earnings, so they are read on price alone
+  const fund = isIndex ? null : normaliseQuarters(stock);
+  const snap = (d) => (fund ? snapshot(fund, d) : null);
   const now = mo[mo.length - 1];
-  const nowSnap = snapshot(fund, new Date('2100-01-01'));
+  const nowSnap = snap(new Date('2100-01-01'));
   const pe = (price, s) => (s && s.rrEps > 0 ? price / s.rrEps : null);
 
   // per-month snapshot for the time-machine cursor
   const months = mo.map((b) => {
-    const s = snapshot(fund, monthEnd(b.m));
+    const s = snap(monthEnd(b.m));
     return {
       m: b.m, o: b.o, h: b.h, l: b.l, c: b.c,
       up: b.up === null ? null : r2(b.up), lo: b.lo === null ? null : r2(b.lo),
@@ -220,7 +224,7 @@ for (const stock of STOCKS) {
   });
 
   const episodes = findEpisodes(mo).map((e) => {
-    const s = snapshot(fund, monthEnd(mo[e._p].m));
+    const s = snap(monthEnd(mo[e._p].m));
     const peE = s ? pe(mo[e._p].c, s) : null;
     const peNow = pe(now.c, nowSnap);
     const o = { ...e };
@@ -267,14 +271,14 @@ for (const stock of STOCKS) {
   const peNow = pe(now.c, nowSnap);
   let rel = null;
   if (peThen && peNow) rel = peNow / peThen - 1;
-  const prior4 = fund.quarters.slice(-8, -4);
-  const last4 = fund.quarters.slice(-4);
+  const prior4 = fund ? fund.quarters.slice(-8, -4) : [];
+  const last4 = fund ? fund.quarters.slice(-4) : [];
   const epsGrowth = prior4.length === 4 ? (mean(last4.map((q) => q.neps)) / mean(prior4.map((q) => q.neps)) - 1) * 100 : null;
 
   const placeWord = zone.side === 'TOP' ? (zone.level === 'crossed' ? 'High has touched the upper band' : 'High is near the upper band')
     : zone.side === 'BOTTOM' ? (zone.level === 'crossed' ? 'Low has touched the lower band' : 'Low is near the lower band')
     : (side === 'TOP' ? 'Mid-band, nearer the upper band' : 'Mid-band, nearer the lower band');
-  let val = 'no earlier touch has earnings data to compare';
+  let val = isIndex ? 'an index, so judged on price alone' : 'no earlier touch has earnings data to compare';
   let valKey = 'none';
   if (rel !== null) {
     const t = refSide === 'TOP' ? 'ceilings' : 'floors';
@@ -283,7 +287,7 @@ for (const stock of STOCKS) {
     else { val = `valued like past ${t}`; valKey = 'similar'; }
   }
   const tag = `${placeWord}, ${val}`;
-  const confidence = refUse.length && refUse.every((e) => e.fund.full) ? 'medium' : 'low';
+  const confidence = isIndex ? 'price-only' : refUse.length && refUse.every((e) => e.fund.full) ? 'medium' : 'low';
 
   // base rates from completed episodes
   const base = (side, k) => {
@@ -303,12 +307,12 @@ for (const stock of STOCKS) {
     bandwidthPct: r1(bwNow * 100), bandwidthRank: bwPct,
     months, episodes,
     base: { top: { f3: base('TOP', 'fwd3'), f6: base('TOP', 'fwd6'), f12: base('TOP', 'fwd12') }, bottom: { f3: base('BOTTOM', 'fwd3'), f6: base('BOTTOM', 'fwd6'), f12: base('BOTTOM', 'fwd12') } },
-    now: {
+    now: nowSnap ? {
       q: nowSnap.q, nq: nowSnap.nq, rrRev: Math.round(nowSnap.rrRev), rrEps: r2(nowSnap.rrEps), pe: r1(peNow),
       qRev: Math.round(nowSnap.qRev), epsGrowthPct: r1(epsGrowth), flags: nowSnap.flags,
-    },
+    } : { q: null, nq: 0, rrRev: null, rrEps: null, pe: null, qRev: null, epsGrowthPct: null, flags: [] },
     verdict: { tag, valKey, refSide, peThen: r1(peThen), relPct: rel === null ? null : r1(rel * 100), refs: refUse.map((e) => e.peak), confidence },
-    norm: { oiMedian: Math.round(fund.oiMed), excluded: fund.excluded, flagged: fund.quarters.filter((q) => q.oiFlag).map((q) => q.label) },
+    norm: fund ? { oiMedian: Math.round(fund.oiMed), excluded: fund.excluded, flagged: fund.quarters.filter((q) => q.oiFlag).map((q) => q.label) } : null,
     check: { bandDrift: drift },
   });
 }
